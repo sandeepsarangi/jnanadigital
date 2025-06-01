@@ -286,51 +286,37 @@ function showAttendanceReportsScreen() {
     const reportsVillageFilters = document.getElementById("reports-village-filters");
     const reportsStatsContainer = document.getElementById("reports-stats-container");
     
-    reportsVillageFilters.innerHTML = '<p class="loading-text">Loading filters...</p>';
-    reportsStatsContainer.innerHTML = '<p class="loading-text">Select a village to view reports.</p>';
-
-    // Build village filter buttons
-    const villages = user.assignedVillages || [];
-    let filterButtonsHtml = '';
-
-    if (villages.length === 0) {
-        reportsVillageFilters.innerHTML = '<p class="loading-text">No villages assigned for reports.</p>';
-        return;
-    }
-
-    // Add an "All Villages" button if there are multiple villages
-    if (villages.length > 1) {
-        filterButtonsHtml += `<button class="village-filter-button" data-village="all">All Villages</button>`;
-    }
-
-    // Add buttons for each assigned village
-    villages.forEach(village => {
-        filterButtonsHtml += `<button class="village-filter-button" data-village="${village}">${village}</button>`;
+    // Section 1: Filters (All button and Village dropdown)
+    reportsVillageFilters.innerHTML = `
+        <button class="village-filter-button" data-village="all">All Villages</button>
+        <select id="reports-village-select" class="village-filter-dropdown"></select>
+    `;
+    
+    // Populate the dropdown
+    populateVillageSelect('reports-village-select', user.assignedVillages[0], (event) => {
+        const selectedVillage = event.target.value;
+        // Ensure "All Villages" button is not active when a specific village is selected
+        document.querySelector('.village-filter-button[data-village="all"]').classList.remove('active');
+        generateAttendanceReport(selectedVillage);
     });
 
-    reportsVillageFilters.innerHTML = filterButtonsHtml;
-
-    // Add event listeners to filter buttons
-    document.querySelectorAll('.village-filter-button').forEach(button => {
-        button.addEventListener('click', (event) => {
-            // Remove active class from all buttons
-            document.querySelectorAll('.village-filter-button').forEach(btn => btn.classList.remove('active'));
-            // Add active class to clicked button
-            event.target.classList.add('active');
-
-            const selectedVillage = event.target.dataset.village;
-            generateAttendanceReport(selectedVillage); // Trigger report generation
-        });
+    // Add event listener for "All Villages" button
+    document.querySelector('.village-filter-button[data-village="all"]').addEventListener('click', (event) => {
+        document.querySelectorAll('.village-filter-button').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('reports-village-select').value = ''; // Clear dropdown selection
+        generateAttendanceReport("all");
     });
+
 
     // Automatically load report for the first village or "All" by default
-    if (villages.length > 0) {
-        const defaultReportVillage = villages.length > 1 ? "all" : villages[0];
-        // Ensure "All Villages" button is active if selected
+    if (user.assignedVillages.length > 0) {
+        const defaultReportVillage = user.assignedVillages.length > 1 ? "all" : user.assignedVillages[0];
         if (defaultReportVillage === "all") {
              document.querySelector('.village-filter-button[data-village="all"]').classList.add('active');
+             document.getElementById('reports-village-select').value = ''; // Ensure dropdown is cleared
         } else {
-             document.querySelector(`.village-filter-button[data-village="${defaultReportVillage}"]`).classList.add('active');
+             document.getElementById('reports-village-select').value = defaultReportVillage;
         }
         generateAttendanceReport(defaultReportVillage);
     } else {
@@ -341,7 +327,12 @@ function showAttendanceReportsScreen() {
 // Placeholder for report generation (will be expanded in Phase 3)
 async function generateAttendanceReport(villageName = "all") {
     const reportsStatsContainer = document.getElementById("reports-stats-container");
+    const reportsSummarySection = document.getElementById("reports-stats-summary");
+    const reportsDailyTableContainer = document.getElementById("reports-daily-table-container");
+
     reportsStatsContainer.innerHTML = `<p class="loading-text">Generating report for ${villageName === 'all' ? 'all villages' : villageName}...</p>`;
+    reportsSummarySection.innerHTML = ''; // Clear previous summary
+    reportsDailyTableContainer.innerHTML = ''; // Clear previous table
 
     // Fetch all attendance data (filtered by village if not "all")
     let attendanceData = [];
@@ -422,84 +413,86 @@ async function generateAttendanceReport(villageName = "all") {
     const evening7DayAvg = evening7DayTotalMarked > 0 ? Math.round((evening7DayPresent / evening7DayTotalMarked) * 100) : 0;
 
     // --- Render Report HTML Structure ---
-    let reportHtml = `<h3>Report for ${villageName === 'all' ? 'All Assigned Villages' : villageName}</h3>`;
+    let reportContentHtml = `<h3>Report for ${villageName === 'all' ? 'All Assigned Villages' : villageName}</h3>`;
     
     // Section 2: Key Stats in Numbered Rings
-    reportHtml += `
-        <div class="reports-summary-section">
-            <div class="summary-item">
-                ${createPercentageRingSvg(100)} <div class="value-text">${totalStudentsInScope}</div>
-                <div class="label-text">Total Students</div>
-            </div>
-            <div class="summary-item">
-                ${createPercentageRingSvg(morning7DayAvg)}
-                <div class="value-text">${morning7DayAvg}%</div>
-                <div class="label-text">7-Day Avg (Morning)</div>
-            </div>
-            <div class="summary-item">
-                ${createPercentageRingSvg(evening7DayAvg)}
-                <div class="value-text">${evening7DayAvg}%</div>
-                <div class="label-text">7-Day Avg (Evening)</div>
-            </div>
+    reportsSummarySection.innerHTML = `
+        <div class="summary-item">
+            ${createPercentageRingSvg(100)} <div class="value-text">${totalStudentsInScope}</div>
+            <div class="label-text">Total Students</div>
+        </div>
+        <div class="summary-item">
+            ${createPercentageRingSvg(morning7DayAvg)}
+            <div class="value-text">${morning7DayAvg}%</div>
+            <div class="label-text">7-Day Avg (Morning)</div>
+        </div>
+        <div class="summary-item">
+            ${createPercentageRingSvg(evening7DayAvg)}
+            <div class="value-text">${evening7DayAvg}%</div>
+            <div class="label-text">7-Day Avg (Evening)</div>
         </div>
     `;
 
     // Section 3: Daily Attendance Table
-    reportHtml += `
-        <div class="reports-table-section">
-            <h4>Daily Attendance Counts (Last 7 Days)</h4>
-            <table class="daily-attendance-table">
-                <thead>
-                    <tr>
-                        <th>Session</th>
-                        ${chartLabels.map(label => `<th>${label}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="session-label">Morning</td>
-                        ${last7Days.map(date => {
-                            const stats = dailySessionStats[date]?.Morning || { present: 0, totalMarked: 0 };
-                            return `<td>
-                                <div class="value-with-scope">
-                                    <span class="main-value">${stats.present} / ${stats.totalMarked}</span>
-                                    <span class="scope-text">${villageName === 'all' ? 'All' : villageName}</span>
-                                </div>
-                            </td>`;
-                        }).join('')}
-                    </tr>
-                    <tr>
-                        <td class="session-label">Evening</td>
-                        ${last7Days.map(date => {
-                            const stats = dailySessionStats[date]?.Evening || { present: 0, totalMarked: 0 };
-                            return `<td>
-                                <div class="value-with-scope">
-                                    <span class="main-value">${stats.present} / ${stats.totalMarked}</span>
-                                    <span class="scope-text">${villageName === 'all' ? 'All' : villageName}</span>
-                                </div>
-                            </td>`;
-                        }).join('')}
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    reportsDailyTableContainer.innerHTML = `
+        <h4>Daily Attendance Counts (Last 7 Days)</h4>
+        <table class="daily-attendance-table">
+            <thead>
+                <tr>
+                    <th>Session</th>
+                    ${chartLabels.map(label => `<th>${label}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="session-label">Morning</td>
+                    ${last7Days.map(date => {
+                        const stats = dailySessionStats[date]?.Morning || { present: 0, totalMarked: 0 };
+                        return `<td>
+                            <div class="value-with-scope">
+                                <span class="main-value">${stats.present} / ${stats.totalMarked}</span>
+                                <span class="scope-text">${villageName === 'all' ? 'All' : villageName}</span>
+                            </div>
+                        </td>`;
+                    }).join('')}
+                </tr>
+                <tr>
+                    <td class="session-label">Evening</td>
+                    ${last7Days.map(date => {
+                        const stats = dailySessionStats[date]?.Evening || { present: 0, totalMarked: 0 };
+                        return `<td>
+                            <div class="value-with-scope">
+                                <span class="main-value">${stats.present} / ${stats.totalMarked}</span>
+                                <span class="scope-text">${villageName === 'all' ? 'All' : villageName}</span>
+                            </div>
+                        </td>`;
+                    }).join('')}
+                </tr>
+            </tbody>
+        </table>
     `;
 
     // Section 4: Daily Bar Chart (Canvas element is already in index.html)
-    reportHtml += `
-        <div class="chart-container">
-            <h4>Daily Attendance (Last 7 Days - Morning & Evening)</h4>
-            <canvas id="dailyAttendanceBarChart"></canvas>
-        </div>
-    `;
-
-    reportsStatsContainer.innerHTML = reportHtml;
+    // The canvas element is already in index.html, we just need to ensure its container is visible
+    document.getElementById('reports-charts-container').style.display = 'block'; // Make sure container is visible
+    
+    // Update the main reportsStatsContainer with the overall heading
+    reportsStatsContainer.innerHTML = reportContentHtml;
 
     // --- Render Chart ---
     // Destroy previous chart instances if they exist to prevent memory leaks/errors
     if (window.dailyBarChartInstance) window.dailyBarChartInstance.destroy();
 
     const dailyCtx = document.getElementById('dailyAttendanceBarChart').getContext('2d');
+    // Ensure the canvas context is valid before creating a new chart
+    if (!dailyCtx) {
+        console.error("Could not get 2D context for dailyAttendanceBarChart.");
+        return;
+    }
+
+    const maxStudentsYAxis = Math.max(totalStudentsInScope, 10); // Ensure a minimum max of 10
+    const yAxisMax = Math.ceil(maxStudentsYAxis / 5) * 5; // Round up to nearest 5
+
     window.dailyBarChartInstance = new Chart(dailyCtx, {
         type: 'bar',
         data: {
@@ -512,8 +505,8 @@ async function generateAttendanceReport(villageName = "all") {
                     borderColor: 'rgba(34, 139, 34, 1)',
                     borderWidth: 1,
                     stack: 'morning',
-                    barPercentage: 0.8, // Slightly thinner bars
-                    categoryPercentage: 0.8 // Slightly thinner bars
+                    barPercentage: 0.7, // Slightly thinner bars
+                    categoryPercentage: 0.7 // Slightly thinner bars
                 },
                 {
                     label: 'Morning Absent',
@@ -522,8 +515,8 @@ async function generateAttendanceReport(villageName = "all") {
                     borderColor: 'rgba(107, 114, 128, 0.6)',
                     borderWidth: 1,
                     stack: 'morning',
-                    barPercentage: 0.8,
-                    categoryPercentage: 0.8
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.7
                 },
                 {
                     label: 'Evening Present',
@@ -532,8 +525,8 @@ async function generateAttendanceReport(villageName = "all") {
                     borderColor: 'rgba(255, 165, 0, 1)',
                     borderWidth: 1,
                     stack: 'evening',
-                    barPercentage: 0.8,
-                    categoryPercentage: 0.8
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.7
                 },
                 {
                     label: 'Evening Absent',
@@ -542,8 +535,8 @@ async function generateAttendanceReport(villageName = "all") {
                     borderColor: 'rgba(107, 114, 128, 0.6)',
                     borderWidth: 1,
                     stack: 'evening',
-                    barPercentage: 0.8,
-                    categoryPercentage: 0.8
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.7
                 }
             ]
         },
@@ -561,8 +554,7 @@ async function generateAttendanceReport(villageName = "all") {
                 y: {
                     stacked: true,
                     beginAtZero: true,
-                    // Adjust max dynamically based on totalStudentsInScope, rounded up to nearest 5 or 10
-                    max: Math.ceil(totalStudentsInScope / 5) * 5, 
+                    max: yAxisMax, 
                     ticks: {
                         stepSize: 5, // Stops at 5, 10, 15...
                         callback: function(value) {

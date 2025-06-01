@@ -414,12 +414,26 @@ button.add-button:hover {
 }
 
 /* Reports screen specific styles */
-#reports-village-filters {
+.reports-filter-section {
     display: flex;
     flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
     gap: 10px; /* Space between filter buttons */
     margin-bottom: 20px;
     justify-content: center; /* Center buttons */
+    align-items: center; /* Align items vertically */
+}
+
+/* Style for the village select dropdown in reports filter */
+.reports-filter-section select.village-filter-dropdown {
+    width: auto; /* Allow dropdown to size based on content */
+    flex-grow: 1; /* Allow it to take available space */
+    max-width: 150px; /* Limit max width */
+    margin-top: 0; /* Override default margin-top from general input styles */
+    padding: 8px 15px; /* Match button padding */
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    font-size: 1rem;
+    color: #374151;
 }
 
 /* Village filter button styling (same as dashboard-option-btn for consistency) */
