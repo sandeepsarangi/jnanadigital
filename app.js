@@ -284,39 +284,63 @@ function goBack() {
 function showAttendanceReportsScreen() {
     showScreen("attendance-reports-screen");
     const reportsVillageFilters = document.getElementById("reports-village-filters");
-    const reportsStatsContainer = document.getElementById("reports-stats-container");
-    
-    // Section 1: Filters (All button and Village dropdown)
-    reportsVillageFilters.innerHTML = `
-        <button class="village-filter-button" data-village="all">All Villages</button>
-        <select id="reports-village-select" class="village-filter-dropdown"></select>
-    `;
-    
-    // Populate the dropdown
-    populateVillageSelect('reports-village-select', user.assignedVillages[0], (event) => {
-        const selectedVillage = event.target.value;
-        // Ensure "All Villages" button is not active when a specific village is selected
-        document.querySelector('.village-filter-button[data-village="all"]').classList.remove('active');
-        generateAttendanceReport(selectedVillage);
+    const reportsStatsContainer = document.getElementById("reports-stats-container"); // This is the main content area for reports
+    const reportsSummarySection = document.getElementById("reports-stats-summary"); // This is a child section
+    const reportsDailyTableContainer = document.getElementById("reports-daily-table-container"); // This is a child section
+    const reportsChartsContainer = document.getElementById("reports-charts-container"); // This is a child section
+
+    // Clear all report sections explicitly
+    reportsVillageFilters.innerHTML = '';
+    reportsStatsContainer.innerHTML = ''; // Clear main reports content area
+    reportsSummarySection.innerHTML = ''; // Clear summary section
+    reportsDailyTableContainer.innerHTML = ''; // Clear table section
+    reportsChartsContainer.innerHTML = ''; // Clear chart section
+
+    reportsStatsContainer.innerHTML = '<p class="loading-text">Loading filters and reports...</p>'; // Initial loading message for the main content area
+
+    // Build village filter buttons
+    const villages = user.assignedVillages || [];
+    let filterButtonsHtml = '';
+
+    if (villages.length === 0) {
+        reportsVillageFilters.innerHTML = '<p class="loading-text">No villages assigned for reports.</p>';
+        reportsStatsContainer.innerHTML = '<p>No data to display reports.</p>';
+        return;
+    }
+
+    // Add an "All Villages" button if there are multiple villages
+    if (villages.length > 1) {
+        filterButtonsHtml += `<button class="village-filter-button" data-village="all">All Villages</button>`;
+    }
+
+    // Add buttons for each assigned village
+    villages.forEach(village => {
+        filterButtonsHtml += `<button class="village-filter-button" data-village="${village}">${village}</button>`;
     });
 
-    // Add event listener for "All Villages" button
-    document.querySelector('.village-filter-button[data-village="all"]').addEventListener('click', (event) => {
-        document.querySelectorAll('.village-filter-button').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-        document.getElementById('reports-village-select').value = ''; // Clear dropdown selection
-        generateAttendanceReport("all");
-    });
+    reportsVillageFilters.innerHTML = filterButtonsHtml;
 
+    // Add event listeners to filter buttons
+    document.querySelectorAll('.village-filter-button').forEach(button => {
+        button.addEventListener('click', (event) => {
+            // Remove active class from all buttons
+            document.querySelectorAll('.village-filter-button').forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            event.target.classList.add('active');
+
+            const selectedVillage = event.target.dataset.village;
+            generateAttendanceReport(selectedVillage); // Trigger report generation
+        });
+    });
 
     // Automatically load report for the first village or "All" by default
-    if (user.assignedVillages.length > 0) {
-        const defaultReportVillage = user.assignedVillages.length > 1 ? "all" : user.assignedVillages[0];
+    if (villages.length > 0) {
+        const defaultReportVillage = villages.length > 1 ? "all" : villages[0];
+        // Ensure "All Villages" button is active if selected
         if (defaultReportVillage === "all") {
              document.querySelector('.village-filter-button[data-village="all"]').classList.add('active');
-             document.getElementById('reports-village-select').value = ''; // Ensure dropdown is cleared
         } else {
-             document.getElementById('reports-village-select').value = defaultReportVillage;
+             document.querySelector(`.village-filter-button[data-village="${defaultReportVillage}"]`).classList.add('active');
         }
         generateAttendanceReport(defaultReportVillage);
     } else {
@@ -326,13 +350,19 @@ function showAttendanceReportsScreen() {
 
 // Placeholder for report generation (will be expanded in Phase 3)
 async function generateAttendanceReport(villageName = "all") {
-    const reportsStatsContainer = document.getElementById("reports-stats-container");
+    const reportsStatsContainer = document.getElementById("reports-stats-container"); // This is the main content area for reports
     const reportsSummarySection = document.getElementById("reports-stats-summary");
     const reportsDailyTableContainer = document.getElementById("reports-daily-table-container");
+    const reportsChartsContainer = document.getElementById("reports-charts-container");
 
-    reportsStatsContainer.innerHTML = `<p class="loading-text">Generating report for ${villageName === 'all' ? 'all villages' : villageName}...</p>`;
-    reportsSummarySection.innerHTML = ''; // Clear previous summary
-    reportsDailyTableContainer.innerHTML = ''; // Clear previous table
+    // Clear previous content in the sections
+    reportsSummarySection.innerHTML = '';
+    reportsDailyTableContainer.innerHTML = '';
+    reportsChartsContainer.innerHTML = '';
+    reportsStatsContainer.innerHTML = `<p class="loading-text">Generating report for ${villageName === 'all' ? 'all villages' : villageName}...</p>`; // Show loading message in main container
+
+    // Destroy previous chart instances if they exist to prevent memory leaks/errors
+    if (window.dailyBarChartInstance) window.dailyBarChartInstance.destroy();
 
     // Fetch all attendance data (filtered by village if not "all")
     let attendanceData = [];
@@ -413,8 +443,11 @@ async function generateAttendanceReport(villageName = "all") {
     const evening7DayAvg = evening7DayTotalMarked > 0 ? Math.round((evening7DayPresent / evening7DayTotalMarked) * 100) : 0;
 
     // --- Render Report HTML Structure ---
-    let reportContentHtml = `<h3>Report for ${villageName === 'all' ? 'All Assigned Villages' : villageName}</h3>`;
-    
+    // Add the overall heading to the main reportsStatsContainer
+    reportsStatsContainer.innerHTML += `<h3>Report for ${villageName === 'all' ? 'All Assigned Villages' : villageName}</h3>`;
+    reportsStatsContainer.innerHTML += `<p><strong>Total Unique Students in Scope:</strong> ${totalStudentsInScope}</p>`;
+    reportsStatsContainer.innerHTML += `<p><strong>Total Attendance Records Processed:</strong> ${attendanceData.length}</p>`;
+
     // Section 2: Key Stats in Numbered Rings
     reportsSummarySection.innerHTML = `
         <div class="summary-item">
@@ -476,9 +509,6 @@ async function generateAttendanceReport(villageName = "all") {
     // The canvas element is already in index.html, we just need to ensure its container is visible
     document.getElementById('reports-charts-container').style.display = 'block'; // Make sure container is visible
     
-    // Update the main reportsStatsContainer with the overall heading
-    reportsStatsContainer.innerHTML = reportContentHtml;
-
     // --- Render Chart ---
     // Destroy previous chart instances if they exist to prevent memory leaks/errors
     if (window.dailyBarChartInstance) window.dailyBarChartInstance.destroy();
