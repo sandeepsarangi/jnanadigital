@@ -114,12 +114,18 @@ button.disabled {
 
 /* New styling for the main logo on the login screen */
 .main-logo {
-  width: 120px; /* Make it bigger */
-  height: 120px;
+  width: 180px; /* Made 1.5x bigger (120px * 1.5 = 180px) */
+  height: 180px; /* Made 1.5x bigger (120px * 1.5 = 180px) */
   margin-bottom: 1.5rem;
   display: block;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Styling for the Google Sign-In button container to center it */
+.g_id_signin {
+  margin: 15px auto 0 auto; /* Top margin, then auto left/right for centering */
+  display: block; /* Ensure it behaves as a block element for margin:auto to work */
 }
 
 
@@ -416,6 +422,7 @@ button.add-button:hover {
     justify-content: center; /* Center buttons */
 }
 
+/* Village filter button styling (same as dashboard-option-btn for consistency) */
 .village-filter-button {
     background: #e0e7ff; /* Light blue background */
     color: #4f46e5; /* Dark blue text */
@@ -468,7 +475,7 @@ button.add-button:hover {
     font-size: 1rem;
 }
 
-/* Chart container styling */
+/* Chart container styling (refined for responsive charts) */
 .chart-container {
     position: relative;
     margin: 20px auto;
@@ -487,4 +494,109 @@ button.add-button:hover {
     margin-bottom: 10px;
     color: #1f2937;
     font-size: 1.1rem;
+}
+
+/* Styling for the summary section with rings */
+.reports-summary-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around; /* Distribute items evenly */
+    gap: 15px; /* Space between summary items */
+    margin-top: 20px;
+    width: 100%;
+    text-align: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 30%; /* Allow items to grow/shrink, max 3 per row on wide screens */
+    min-width: 100px; /* Minimum width for each item */
+    padding: 10px;
+    background: #f8faff; /* Very light background for items */
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.summary-item .percentage-ring-container {
+    margin: 0 auto 8px auto; /* Center ring and add bottom margin */
+}
+
+.summary-item .label-text {
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: 500;
+}
+
+.summary-item .value-text {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-top: 5px;
+}
+
+/* Styling for the daily attendance table */
+.reports-table-section {
+    width: 100%;
+    margin-top: 20px;
+    overflow-x: auto; /* Allow horizontal scrolling for table on small screens */
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background-color: #fcfcfc;
+    padding: 10px;
+}
+
+.daily-attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.daily-attendance-table th, .daily-attendance-table td {
+    padding: 8px 5px;
+    border: 1px solid #eee;
+    white-space: nowrap; /* Prevent date headers from wrapping */
+}
+
+.daily-attendance-table th {
+    background-color: #eef2ff; /* Light background for headers */
+    font-weight: 600;
+    color: #374151;
+}
+
+.daily-attendance-table tr:nth-child(even) {
+    background-color: #f8faff; /* Alternate row background */
+}
+
+.daily-attendance-table td.session-label {
+    text-align: left;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.daily-attendance-table .value-with-scope {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+}
+
+.daily-attendance-table .value-with-scope .main-value {
+    font-weight: 700;
+    color: #4f46e5;
+}
+
+.daily-attendance-table .value-with-scope .scope-text {
+    font-size: 0.7rem;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+/* Adjust button spacing within cards if needed */
+.card button + button {
+    margin-top: 10px;
 }

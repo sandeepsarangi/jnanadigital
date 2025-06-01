@@ -403,40 +403,89 @@ async function generateAttendanceReport(villageName = "all") {
         }
     });
 
-    // Prepare data for Chart.js
-    const chartLabels = last7Days.map(date => {
-        const d = new Date(date);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); // e.g., "May 28"
-    });
-
-    const morningPresentData = [];
-    const morningAbsentData = [];
-    const eveningPresentData = [];
-    const eveningAbsentData = [];
+    // Calculate 7-day averages for rings
+    let morning7DayPresent = 0;
+    let morning7DayTotalMarked = 0;
+    let evening7DayPresent = 0;
+    let evening7DayTotalMarked = 0;
 
     last7Days.forEach(date => {
         const morningStats = dailySessionStats[date]?.Morning || { present: 0, totalMarked: 0 };
         const eveningStats = dailySessionStats[date]?.Evening || { present: 0, totalMarked: 0 };
-
-        // For stacked bar, the 'absent' part is (total students in scope - present count)
-        // The 'totalMarked' is not necessarily total students in scope.
-        // Let's assume the gray bar should represent the total students in the selected village(s) (studentData.length)
-        // and the colored bar is the present count. The 'absent' part is then `totalStudentsInScope - present`.
-        
-        morningPresentData.push(morningStats.present);
-        morningAbsentData.push(totalStudentsInScope - morningStats.present); // Total students - present
-
-        eveningPresentData.push(eveningStats.present);
-        eveningAbsentData.push(totalStudentsInScope - eveningStats.present); // Total students - present
+        morning7DayPresent += morningStats.present;
+        morning7DayTotalMarked += morningStats.totalMarked;
+        evening7DayPresent += eveningStats.present;
+        evening7DayTotalMarked += eveningStats.totalMarked;
     });
 
+    const morning7DayAvg = morning7DayTotalMarked > 0 ? Math.round((morning7DayPresent / morning7DayTotalMarked) * 100) : 0;
+    const evening7DayAvg = evening7DayTotalMarked > 0 ? Math.round((evening7DayPresent / evening7DayTotalMarked) * 100) : 0;
 
-    // --- Render Report HTML ---
+    // --- Render Report HTML Structure ---
     let reportHtml = `<h3>Report for ${villageName === 'all' ? 'All Assigned Villages' : villageName}</h3>`;
-    reportHtml += `<p><strong>Total Unique Students in Scope:</strong> ${totalStudentsInScope}</p>`;
-    reportHtml += `<p><strong>Total Attendance Records Processed:</strong> ${attendanceData.length}</p>`;
+    
+    // Section 2: Key Stats in Numbered Rings
+    reportHtml += `
+        <div class="reports-summary-section">
+            <div class="summary-item">
+                ${createPercentageRingSvg(100)} <div class="value-text">${totalStudentsInScope}</div>
+                <div class="label-text">Total Students</div>
+            </div>
+            <div class="summary-item">
+                ${createPercentageRingSvg(morning7DayAvg)}
+                <div class="value-text">${morning7DayAvg}%</div>
+                <div class="label-text">7-Day Avg (Morning)</div>
+            </div>
+            <div class="summary-item">
+                ${createPercentageRingSvg(evening7DayAvg)}
+                <div class="value-text">${evening7DayAvg}%</div>
+                <div class="label-text">7-Day Avg (Evening)</div>
+            </div>
+        </div>
+    `;
 
-    // Add canvas element for the combined daily chart
+    // Section 3: Daily Attendance Table
+    reportHtml += `
+        <div class="reports-table-section">
+            <h4>Daily Attendance Counts (Last 7 Days)</h4>
+            <table class="daily-attendance-table">
+                <thead>
+                    <tr>
+                        <th>Session</th>
+                        ${chartLabels.map(label => `<th>${label}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="session-label">Morning</td>
+                        ${last7Days.map(date => {
+                            const stats = dailySessionStats[date]?.Morning || { present: 0, totalMarked: 0 };
+                            return `<td>
+                                <div class="value-with-scope">
+                                    <span class="main-value">${stats.present} / ${stats.totalMarked}</span>
+                                    <span class="scope-text">${villageName === 'all' ? 'All' : villageName}</span>
+                                </div>
+                            </td>`;
+                        }).join('')}
+                    </tr>
+                    <tr>
+                        <td class="session-label">Evening</td>
+                        ${last7Days.map(date => {
+                            const stats = dailySessionStats[date]?.Evening || { present: 0, totalMarked: 0 };
+                            return `<td>
+                                <div class="value-with-scope">
+                                    <span class="main-value">${stats.present} / ${stats.totalMarked}</span>
+                                    <span class="scope-text">${villageName === 'all' ? 'All' : villageName}</span>
+                                </div>
+                            </td>`;
+                        }).join('')}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // Section 4: Daily Bar Chart (Canvas element is already in index.html)
     reportHtml += `
         <div class="chart-container">
             <h4>Daily Attendance (Last 7 Days - Morning & Evening)</h4>
@@ -458,27 +507,43 @@ async function generateAttendanceReport(villageName = "all") {
             datasets: [
                 {
                     label: 'Morning Present',
-                    data: morningPresentData,
-                    backgroundColor: 'rgba(79, 70, 229, 0.8)', // Blue for present
+                    data: last7Days.map(date => dailySessionStats[date]?.Morning?.present || 0),
+                    backgroundColor: 'rgba(174, 235, 174, 0.8)', // Pastel Green
+                    borderColor: 'rgba(34, 139, 34, 1)',
+                    borderWidth: 1,
                     stack: 'morning',
+                    barPercentage: 0.8, // Slightly thinner bars
+                    categoryPercentage: 0.8 // Slightly thinner bars
                 },
                 {
                     label: 'Morning Absent',
-                    data: morningAbsentData,
+                    data: last7Days.map(date => totalStudentsInScope - (dailySessionStats[date]?.Morning?.present || 0)),
                     backgroundColor: 'rgba(107, 114, 128, 0.4)', // Gray for absent
+                    borderColor: 'rgba(107, 114, 128, 0.6)',
+                    borderWidth: 1,
                     stack: 'morning',
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.8
                 },
                 {
                     label: 'Evening Present',
-                    data: eveningPresentData,
-                    backgroundColor: 'rgba(34, 197, 94, 0.8)', // Green for present
+                    data: last7Days.map(date => dailySessionStats[date]?.Evening?.present || 0),
+                    backgroundColor: 'rgba(255, 223, 186, 0.8)', // Pastel Orange
+                    borderColor: 'rgba(255, 165, 0, 1)',
+                    borderWidth: 1,
                     stack: 'evening',
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.8
                 },
                 {
                     label: 'Evening Absent',
-                    data: eveningAbsentData,
+                    data: last7Days.map(date => totalStudentsInScope - (dailySessionStats[date]?.Evening?.present || 0)),
                     backgroundColor: 'rgba(107, 114, 128, 0.4)', // Gray for absent
+                    borderColor: 'rgba(107, 114, 128, 0.6)',
+                    borderWidth: 1,
                     stack: 'evening',
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.8
                 }
             ]
         },
@@ -496,12 +561,13 @@ async function generateAttendanceReport(villageName = "all") {
                 y: {
                     stacked: true,
                     beginAtZero: true,
-                    max: 50, // Max Y-axis value
+                    // Adjust max dynamically based on totalStudentsInScope, rounded up to nearest 5 or 10
+                    max: Math.ceil(totalStudentsInScope / 5) * 5, 
                     ticks: {
                         stepSize: 5, // Stops at 5, 10, 15...
                         callback: function(value) {
                             // Only show specific stops if they are multiples of 5 and within range
-                            if (value % 5 === 0 && value >= 0 && value <= 50) {
+                            if (value % 5 === 0 && value >= 0 && value <= this.max) {
                                 return value;
                             }
                         }
@@ -513,6 +579,9 @@ async function generateAttendanceReport(villageName = "all") {
                 }
             },
             plugins: {
+                legend: {
+                    position: 'bottom', // Legends at the bottom
+                },
                 tooltip: {
                     mode: 'index',
                     intersect: false,
@@ -526,11 +595,8 @@ async function generateAttendanceReport(villageName = "all") {
                                 label += context.parsed.y;
                             }
                             // Add extra info for total students in scope
-                            if (context.dataset.stack === 'morning' && context.dataset.label.includes('Present')) {
-                                return [label, `Total Students: ${totalStudentsInScope}`];
-                            }
-                            if (context.dataset.stack === 'evening' && context.dataset.label.includes('Present')) {
-                                return [label, `Total Students: ${totalStudentsInScope}`];
+                            if (context.dataset.stack === 'morning' || context.dataset.stack === 'evening') {
+                                return [label, `Total Students in Scope: ${totalStudentsInScope}`];
                             }
                             return label;
                         }

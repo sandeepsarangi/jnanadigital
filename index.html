@@ -13,7 +13,7 @@
     <div class="login-screen" id="login-screen">
       <div class="card">
         <img src="JnanaLogo-min.png" class="main-logo" onerror="this.style.display='none'" alt="Jnana Logo - Lighting a bulb" />
-        <h2>🔐 Jnana Login</h2>
+        <h2>🔐 Login</h2>
         
         <div id="g_id_onload"
              data-client_id="706534157986-21k4tsoda92pkrkdai0f9nlfe6oo0k16.apps.googleusercontent.com"
@@ -107,10 +107,18 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Emoji_u1f4dd.svg/64px-Emoji_u1f4dd.svg.png" class="logo" onerror="this.style.display='none'" alt="Clipboard Logo" />
         <h2 class="centered-heading">📈 Attendance Reports</h2>
         <div id="reports-content">
-            <div id="reports-village-filters">
+            <div id="reports-village-filters" class="reports-filter-section">
                 </div>
-            <div id="reports-stats-container">
+            <div id="reports-stats-summary" class="reports-summary-section">
                 </div>
+            <div id="reports-daily-table-container" class="reports-table-section">
+                </div>
+            <div id="reports-charts-container" class="reports-charts-section">
+                <div class="chart-container">
+                    <h4>Daily Attendance (Last 7 Days - Morning & Evening)</h4>
+                    <canvas id="dailyAttendanceBarChart"></canvas>
+                </div>
+            </div>
         </div>
         <button class="secondary-button" onclick="goBackToDashboard()">↩️ Back to Dashboard</button>
       </div>
